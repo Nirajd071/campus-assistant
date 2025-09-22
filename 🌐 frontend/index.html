@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPRIET Campus Assistant - AI Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .university-logo {
+            height: 80px;
+            width: auto;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .header-text {
+            text-align: left;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 768px) {
+            .logo-container {
+                flex-direction: column;
+            }
+            .header-text {
+                text-align: center;
+            }
+        }
+        
+        .chat-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            min-height: 300px;
+        }
+        
+        .message {
+            margin: 0.5rem 0;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .bot-message {
+            background: #e9ecef;
+            color: #333;
+            margin-right: auto;
+            text-align: left;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .input-container input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+        }
+        
+        .input-container input:focus {
+            border-color: #007bff;
+        }
+        
+        .input-container button {
+            padding: 0.8rem 1.5rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        
+        .input-container button:hover {
+            background: #0056b3;
+        }
+        
+        .status {
+            margin: 1rem 0;
+            padding: 0.8rem;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .language-selector {
+            margin: 1rem 0;
+        }
+        
+        .language-selector select {
+            padding: 0.5rem;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .feature {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .feature h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="kpriet-logo.png" alt="KPRIET Logo" class="university-logo">
+                <div class="header-text">
+                    <h1>🎓 KPRIET Campus Assistant</h1>
+                    <p>KPR Institute of Engineering and Technology - AI-powered student companion</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            🔄 Connecting to services...
+        </div>
+        
+        <div class="language-selector">
+            <label for="language">Language: </label>
+            <select id="language">
+                <option value="en">English</option>
+                <option value="hi">हिंदी (Hindi)</option>
+                <option value="bn">বাংলা (Bengali)</option>
+                <option value="ta">தமிழ் (Tamil)</option>
+                <option value="te">తెలుగు (Telugu)</option>
+                <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                <option value="ml">മലയാളം (Malayalam)</option>
+                <option value="mr">मराठी (Marathi)</option>
+                <option value="gu">ગુજરાતી (Gujarati)</option>
+                <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+            </select>
+        </div>
+        
+        <div class="chat-container">
+            <div id="messages" class="messages">
+                <div class="message bot-message">
+                    👋 Hello! I'm your Campus Assistant. I can help you with:
+                    <br>• Fee inquiries and payment information
+                    <br>• Scholarship details and eligibility
+                    <br>• Academic schedules and timetables
+                    <br>• Campus facilities and services
+                    <br>• Admission procedures
+                    <br><br>Ask me anything in your preferred language!
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" id="messageInput" placeholder="Type your message here..." disabled>
+                <button id="sendButton" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🌍 Multilingual</h3>
+                <p>Supports 10+ Indian languages with automatic detection</p>
+            </div>
+            <div class="feature">
+                <h3>🧠 AI-Powered</h3>
+                <p>Advanced NLP for intelligent responses</p>
+            </div>
+            <div class="feature">
+                <h3>⚡ Real-time</h3>
+                <p>Instant responses with context awareness</p>
+            </div>
+            <div class="feature">
+                <h3>🎯 Campus-Specific</h3>
+                <p>Trained on university policies and procedures</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cache busting - force reload
+        console.log('Campus AI Frontend v2.0 - Loading...');
+        let isConnected = false;
+        
+        // API endpoints - Use nginx proxy (same origin)
+        const BACKEND_API = ''; // Use same origin (nginx will proxy)
+        const NLP_API = BACKEND_API; // Use nginx proxy
+        
+        // Add retry mechanism
+        async function fetchWithRetry(url, options = {}, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                } catch (error) {
+                    console.log(`Attempt ${i + 1} failed:`, error.message);
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+        }
+        
+        // Check service status
+        async function checkServices() {
+            const statusElement = document.getElementById('status');
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            
+            console.log('Checking services...', BACKEND_API);
+            statusElement.innerHTML = '🔄 Connecting...';
+            
+            try {
+                // Check Backend API (which proxies to NLP) with retry
+                console.log('Making request to:', `${BACKEND_API}/health`);
+                const backendResponse = await fetchWithRetry(`${BACKEND_API}/health`);
+                console.log('Response received:', backendResponse.status, backendResponse.statusText);
+                
+                const backendStatus = await backendResponse.json();
+                console.log('Backend status:', backendStatus);
+                
+                if (backendStatus.status === 'healthy') {
+                    console.log('✅ Backend is healthy, enabling chat');
+                    statusElement.className = 'status connected';
+                    statusElement.innerHTML = '✅ Connected to Campus Assistant AI';
+                    isConnected = true;
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                } else {
+                    console.error('❌ Backend not healthy:', backendStatus);
+                    throw new Error('Backend service not healthy: ' + JSON.stringify(backendStatus));
+                }
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+                statusElement.className = 'status disconnected';
+                statusElement.innerHTML = '❌ Unable to connect to Campus Assistant services';
+                isConnected = false;
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+            }
+        }
+        
+        // Send message
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !isConnected) return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            messageInput.value = '';
+            
+            // Show typing indicator
+            const typingDiv = addMessage('🤔 Thinking...', 'bot');
+            
+            try {
+                const language = document.getElementById('language').value;
+                
+                // Send to Backend API (which forwards to NLP)
+                const response = await fetch(`${BACKEND_API}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        language: language,
+                        session_id: 'web-session-' + Date.now()
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // Remove typing indicator
+                typingDiv.remove();
+                
+                // Add bot response
+                addMessage(result.response || 'I apologize, but I encountered an issue processing your request. Please try again.', 'bot');
+                
+            } catch (error) {
+                // Remove typing indicator
+                typingDiv.remove();
+                
+                // Add error message
+                addMessage('Sorry, I encountered an error. Please check if the services are running and try again.', 'bot');
+            }
+        }
+        
+        // Add message to chat
+        function addMessage(text, sender) {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            return messageDiv;
+        }
+        
+        // Handle Enter key
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Initialize
+        checkServices();
+        
+        // Check services every 30 seconds
+        setInterval(checkServices, 30000);
+    </script>
+</body>
+</html>

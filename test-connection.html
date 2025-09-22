@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Campus AI Connection Test</title>
+</head>
+<body>
+    <h1>Campus AI Connection Test</h1>
+    <div id="status">Testing...</div>
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="result"></div>
+
+    <script>
+        async function testConnection() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testing connection to http://localhost:3007/health');
+                
+                // Test health endpoint
+                const response = await fetch('http://localhost:3007/health');
+                const data = await response.json();
+                
+                statusDiv.innerHTML = '✅ Connection successful!';
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                // Test chat endpoint
+                const chatResponse = await fetch('http://localhost:3007/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'hello',
+                        session_id: 'test'
+                    })
+                });
+                
+                const chatData = await chatResponse.json();
+                resultDiv.innerHTML += `<h3>Chat Test:</h3><pre>${JSON.stringify(chatData, null, 2)}</pre>`;
+                
+            } catch (error) {
+                console.error('Connection failed:', error);
+                statusDiv.innerHTML = '❌ Connection failed: ' + error.message;
+                resultDiv.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = testConnection;
+    </script>
+</body>
+</html>

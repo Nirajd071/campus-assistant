@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Campus AI Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .testing { background: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Campus AI Debug Interface</h1>
+    <div id="status" class="status testing">🔄 Ready to test...</div>
+    
+    <button onclick="testHealth()">Test Health</button>
+    <button onclick="testChat()">Test Chat</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <h3>Debug Logs:</h3>
+    <pre id="logs"></pre>
+
+    <script>
+        let logs = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`[${timestamp}] ${message}`);
+            document.getElementById('logs').textContent = logs.join('\n');
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            logs = [];
+            document.getElementById('logs').textContent = '';
+        }
+        
+        async function testHealth() {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status testing';
+            statusEl.textContent = '🔄 Testing health endpoint...';
+            
+            try {
+                log('Testing health endpoint: http://localhost:3007/health');
+                
+                const response = await fetch('http://localhost:3007/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`);
+                log(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data.status === 'healthy') {
+                    statusEl.className = 'status connected';
+                    statusEl.textContent = '✅ Health check successful!';
+                    log('✅ Health check passed');
+                } else {
+                    throw new Error('Health check failed: ' + JSON.stringify(data));
+                }
+                
+            } catch (error) {
+                log(`❌ Health check error: ${error.message}`);
+                statusEl.className = 'status disconnected';
+                statusEl.textContent = '❌ Health check failed';
+            }
+        }
+        
+        async function testChat() {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status testing';
+            statusEl.textContent = '🔄 Testing chat endpoint...';
+            
+            try {
+                log('Testing chat endpoint: http://localhost:3007/chat');
+                
+                const response = await fetch('http://localhost:3007/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'debug test',
+                        session_id: 'debug_session'
+                    })
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`);
+                
+                const data = await response.json();
+                log(`Chat response: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data.response) {
+                    statusEl.className = 'status connected';
+                    statusEl.textContent = '✅ Chat test successful!';
+                    log('✅ Chat test passed');
+                } else {
+                    throw new Error('No response received');
+                }
+                
+            } catch (error) {
+                log(`❌ Chat test error: ${error.message}`);
+                statusEl.className = 'status disconnected';
+                statusEl.textContent = '❌ Chat test failed';
+            }
+        }
+        
+        // Auto-run health test on load
+        window.onload = function() {
+            log('🚀 Debug interface loaded');
+            setTimeout(testHealth, 1000);
+        };
+    </script>
+</body>
+</html>
