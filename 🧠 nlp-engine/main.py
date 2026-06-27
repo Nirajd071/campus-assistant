@@ -50,6 +50,7 @@ language_detector: Optional[LanguageDetector] = None
 intent_classifier: Optional[IntentClassifier] = None
 context_manager: Optional[ContextManager] = None
 response_generator: Optional[ResponseGenerator] = None
+ai_service: Optional[RealTimeAIService] = None
 
 # Pydantic models
 class ChatRequest(BaseModel):

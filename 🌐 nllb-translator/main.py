@@ -49,9 +49,8 @@ class NLLBTranslator:
             'ne': 'npi_Deva',
             'ur': 'urd_Arab'
         }
-        
-        # Start model loading in background
-        asyncio.create_task(self.load_model())
+        # Model is loaded on FastAPI startup (see @app.on_event("startup")),
+        # not in __init__, because there is no running event loop at import time.
     
     async def load_model(self):
         """Load NLLB model asynchronously"""
@@ -119,6 +118,12 @@ class NLLBTranslator:
 
 # Initialize translator
 translator = NLLBTranslator()
+
+
+@app.on_event("startup")
+async def load_model_on_startup():
+    """Load the NLLB model in the background once the event loop is running."""
+    asyncio.create_task(translator.load_model())
 
 @app.get("/health")
 async def health_check():
