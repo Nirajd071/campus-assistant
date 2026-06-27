@@ -17,12 +17,8 @@ COPY . .
 # Create logs directory
 RUN mkdir -p logs
 
-# Expose port (if needed for webhooks)
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
+# NOTE: This is a long-polling worker with no HTTP server, so there is no
+# endpoint to health-check. Container liveness is managed by the restart policy.
 
 # Run the bot
 CMD ["python", "bot.py"]

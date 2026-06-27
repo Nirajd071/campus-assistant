@@ -19,15 +19,27 @@ if ! command -v docker >/dev/null 2>&1; then
     exit 1
 fi
 
+# Detect the Compose command (v2 plugin "docker compose" or legacy "docker-compose")
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+else
+    echo "❌ Docker Compose not found. Install the Docker Compose plugin or docker-compose."
+    exit 1
+fi
+
+COMPOSE_FILE="./⚙️ Configuration Files/docker-compose.yml"
+
 # Main function
 case "${1:-menu}" in
     "start")
         echo "🚀 Starting all services..."
-        docker-compose -f "./⚙️ Configuration Files/docker-compose.yml" down 2>/dev/null || true
+        $COMPOSE -f "$COMPOSE_FILE" down 2>/dev/null || true
         docker rm -f campus_postgres campus_redis campus_nlp campus_backend campus_frontend campus_telegram_bot 2>/dev/null || true
         
         echo "🚀 Starting all services together..."
-        docker-compose -f "./⚙️ Configuration Files/docker-compose.yml" up -d
+        $COMPOSE -f "$COMPOSE_FILE" up -d
         
         echo "⏳ Services starting up..."
         sleep 15
@@ -78,7 +90,7 @@ case "${1:-menu}" in
         
     "stop")
         echo "⏹️ Stopping all services..."
-        docker-compose -f "./⚙️ Configuration Files/docker-compose.yml" down
+        $COMPOSE -f "$COMPOSE_FILE" down
         echo -e "${GREEN}✅ All services stopped!${NC}"
         ;;
         
@@ -138,7 +150,7 @@ case "${1:-menu}" in
         ;;
         
     "logs")
-        docker-compose -f "./⚙️ Configuration Files/docker-compose.yml" logs --tail=20
+        $COMPOSE -f "$COMPOSE_FILE" logs --tail=20
         ;;
         
     "telegram")
