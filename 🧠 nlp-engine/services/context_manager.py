@@ -6,6 +6,7 @@ Handles conversation context and session management for multi-turn conversations
 import asyncio
 import json
 import logging
+import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import uuid
@@ -31,7 +32,19 @@ class ContextManager:
     - Context summarization for long conversations
     """
     
-    def __init__(self, redis_url: str = "redis://localhost:6379"):
+    def __init__(self, redis_url: str = None):
+        # Build the Redis URL from discrete env vars (as provided by
+        # docker-compose) or an explicit REDIS_URL, falling back to localhost.
+        if redis_url is None:
+            redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            host = os.getenv("REDIS_HOST", "localhost")
+            port = os.getenv("REDIS_PORT", "6379")
+            password = os.getenv("REDIS_PASSWORD")
+            if password:
+                redis_url = f"redis://:{password}@{host}:{port}"
+            else:
+                redis_url = f"redis://{host}:{port}"
         self.redis_url = redis_url
         self.redis_client = None
         self.session_timeout = timedelta(minutes=30)  # 30 minutes default

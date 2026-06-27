@@ -50,7 +50,17 @@ class RealTimeAIService:
             logger.info(f"✅ Using model: {self.openai_model}")
             
         if self.use_gemini and GEMINI_AVAILABLE:
-            genai.configure(api_key=self.gemini_api_key)
+            try:
+                genai.configure(api_key=self.gemini_api_key)
+                # Initialize the model so generate_gemini_response() has a client.
+                self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+                logger.info("✅ Gemini model initialized")
+            except Exception as e:
+                logger.warning(f"Gemini initialization failed, disabling Gemini: {e}")
+                self.use_gemini = False
+                self.gemini_model = None
+        else:
+            self.gemini_model = None
             
         # Initialize simple multilingual service
         self.multilingual_service = SimpleMultilingualService()
@@ -191,15 +201,51 @@ class RealTimeAIService:
                     temperature=0.3,
                     max_tokens=500
                 )
-                
-                result = json.loads(completion.choices[0].message.content)
-                return result
-                
+
+                content = completion.choices[0].message.content or ""
+                result = self._parse_intent_json(content)
+                if result:
+                    # Ensure required keys exist with sane defaults.
+                    result.setdefault("intent", "general")
+                    result.setdefault("confidence", 0.7)
+                    result.setdefault("data_needed", [])
+                    return result
+                logger.warning("Could not parse intent JSON from model output; using pattern fallback")
+
             except Exception as e:
                 logger.error(f"NVIDIA OpenAI intent analysis failed: {e}")
-        
+
         # Fallback to pattern-based analysis
         return await self.pattern_based_intent(message)
+
+    @staticmethod
+    def _parse_intent_json(content: str) -> Optional[Dict[str, Any]]:
+        """Best-effort extraction of a JSON object from a model response.
+
+        Models frequently wrap JSON in ```json fences or add prose around it,
+        so we strip fences and fall back to extracting the first {...} block.
+        """
+        if not content:
+            return None
+        text = content.strip()
+        # Strip markdown code fences if present.
+        if text.startswith("```"):
+            text = text.split("```")[1] if "```" in text[3:] else text.strip("`")
+            if text.lstrip().lower().startswith("json"):
+                text = text.lstrip()[4:]
+        try:
+            return json.loads(text)
+        except (ValueError, TypeError):
+            pass
+        # Fall back to the first balanced-looking object in the text.
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(text[start:end + 1])
+            except (ValueError, TypeError):
+                return None
+        return None
     
     async def fetch_live_data(self, intent_analysis: Dict, student_id: Optional[str]) -> Dict[str, Any]:
         """

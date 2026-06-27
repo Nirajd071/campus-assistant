@@ -10,7 +10,14 @@ import aiohttp
 import json
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    filters,
+    ContextTypes,
+)
 import logging
 
 # Configure logging
@@ -24,9 +31,12 @@ class CampusAssistantBot:
     def __init__(self):
         self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.nlp_api_url = os.getenv("NLP_API_URL", "http://localhost:8001")
-        
-        if not self.bot_token:
-            raise ValueError("TELEGRAM_BOT_TOKEN not found in environment variables")
+
+        if not self.bot_token or self.bot_token == "YOUR_BOT_TOKEN_HERE":
+            raise ValueError(
+                "TELEGRAM_BOT_TOKEN is not configured. Set a real token from "
+                "@BotFather in your .env file to enable the Telegram bot."
+            )
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
@@ -267,12 +277,19 @@ Ready to assist you! 🚀
 if __name__ == "__main__":
     # Load environment variables
     from dotenv import load_dotenv
+    import time
     load_dotenv()
-    
+
     try:
         bot = CampusAssistantBot()
         bot.run()
     except KeyboardInterrupt:
         logger.info("🛑 Bot stopped by user")
+    except ValueError as e:
+        # Token not configured. Idle instead of crash-looping under a
+        # restart policy so the rest of the stack stays healthy.
+        logger.warning(f"⚠️ Telegram bot disabled: {e}")
+        while True:
+            time.sleep(3600)
     except Exception as e:
         logger.error(f"❌ Bot error: {e}")

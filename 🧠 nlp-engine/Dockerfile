@@ -1,12 +1,8 @@
 # NLP Engine Dockerfile
 FROM python:3.11-slim
 
-# Install system dependencies for ML libraries
+# Install minimal system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    g++ \
-    cmake \
-    git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,10 +15,6 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Download spaCy models
-RUN python -m spacy download en_core_web_sm
-RUN python -m spacy download xx_ent_wiki_sm
 
 # Copy application code
 COPY . .

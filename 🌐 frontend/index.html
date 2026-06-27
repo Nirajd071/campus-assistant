@@ -276,13 +276,36 @@
 
     <script>
         // Cache busting - force reload
-        console.log('Campus AI Frontend v2.0 - Loading...');
+        console.log('Campus AI Frontend v2.1 - Loading...');
         let isConnected = false;
-        
-        // API endpoints - Use nginx proxy (same origin)
-        const BACKEND_API = ''; // Use same origin (nginx will proxy)
-        const NLP_API = BACKEND_API; // Use nginx proxy
-        
+
+        // API base resolution:
+        //  - When served behind the nginx proxy (port 3008), same-origin ('')
+        //    works because /health and /chat are proxied to the backend.
+        //  - When the page is opened directly (file:// or a static server on a
+        //    different port), fall back to the backend on localhost:3007.
+        let API_BASE = '';
+
+        async function resolveApiBase() {
+            const candidates = ['', 'http://localhost:3007', 'http://127.0.0.1:3007'];
+            for (const base of candidates) {
+                try {
+                    const res = await fetch(`${base}/health`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.status === 'healthy') {
+                            API_BASE = base;
+                            console.log('Using API base:', base || '(same-origin)');
+                            return base;
+                        }
+                    }
+                } catch (e) {
+                    // try next candidate
+                }
+            }
+            return null;
+        }
+
         // Add retry mechanism
         async function fetchWithRetry(url, options = {}, retries = 3) {
             for (let i = 0; i < retries; i++) {
@@ -306,15 +329,16 @@
             const messageInput = document.getElementById('messageInput');
             const sendButton = document.getElementById('sendButton');
             
-            console.log('Checking services...', BACKEND_API);
             statusElement.innerHTML = '🔄 Connecting...';
             
             try {
-                // Check Backend API (which proxies to NLP) with retry
-                console.log('Making request to:', `${BACKEND_API}/health`);
-                const backendResponse = await fetchWithRetry(`${BACKEND_API}/health`);
-                console.log('Response received:', backendResponse.status, backendResponse.statusText);
-                
+                // Find a reachable backend (same-origin proxy or localhost).
+                const base = await resolveApiBase();
+                if (base === null) {
+                    throw new Error('No reachable backend found');
+                }
+
+                const backendResponse = await fetchWithRetry(`${API_BASE}/health`);
                 const backendStatus = await backendResponse.json();
                 console.log('Backend status:', backendStatus);
                 
@@ -358,7 +382,7 @@
                 const language = document.getElementById('language').value;
                 
                 // Send to Backend API (which forwards to NLP)
-                const response = await fetch(`${BACKEND_API}/chat`, {
+                const response = await fetch(`${API_BASE}/chat`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

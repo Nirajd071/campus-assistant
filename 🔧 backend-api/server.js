@@ -22,6 +22,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.BACKEND_API_PORT || 3007;
 
+// NLP engine base URL (configurable so it works both inside Docker and locally)
+const NLP_API_URL = process.env.NLP_API_URL || 'http://localhost:8001';
+
 // Logger setup
 const logger = winston.createLogger({
   level: 'info',
@@ -36,21 +39,57 @@ const logger = winston.createLogger({
 });
 
 // Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/campus_assistant',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+// docker-compose provides discrete DB_* variables; we also accept a single
+// DATABASE_URL. Prefer discrete vars when present so the container can reach
+// the `postgres` service correctly.
+const poolConfig = process.env.DATABASE_URL
+  ? { connectionString: process.env.DATABASE_URL }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT, 10) || 5432,
+      database: process.env.DB_NAME || 'campus_assistant',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres'
+    };
+poolConfig.ssl = process.env.NODE_ENV === 'production' && process.env.DB_SSL === 'true'
+  ? { rejectUnauthorized: false }
+  : false;
+
+const pool = new Pool(poolConfig);
+
+// Surface (but do not crash on) pool-level connection errors.
+pool.on('error', (error) => {
+  logger.warn('PostgreSQL pool error:', error.message);
 });
 
 // Redis connection
+// Note: the connection is best-effort. The API remains functional (chat proxy,
+// auth, FAQs) even when Redis is unavailable, so failures must never crash the
+// process. We attach an 'error' handler and swallow connect rejections.
 let redisClient;
+let redisReady = false;
 try {
   redisClient = redis.createClient({
     url: process.env.REDIS_URL || 'redis://localhost:6379'
   });
-  redisClient.connect();
-  logger.info('Redis connected successfully');
+
+  redisClient.on('error', (error) => {
+    if (redisReady) {
+      logger.warn('Redis client error:', error.message);
+    }
+    redisReady = false;
+  });
+
+  redisClient.on('ready', () => {
+    redisReady = true;
+    logger.info('Redis connected successfully');
+  });
+
+  redisClient.connect().catch((error) => {
+    logger.warn('Redis connection failed, continuing without cache:', error.message);
+  });
 } catch (error) {
-  logger.error('Redis connection failed:', error);
+  logger.warn('Redis initialization failed, continuing without cache:', error.message);
 }
 
 // Middleware
@@ -114,7 +153,7 @@ app.get('/health', (req, res) => {
     version: '1.0.0',
     services: {
       database: pool ? 'connected' : 'disconnected',
-      redis: redisClient ? 'connected' : 'disconnected'
+      redis: redisReady ? 'connected' : 'disconnected'
     }
   });
 });
@@ -125,7 +164,7 @@ app.post('/chat', async (req, res) => {
     const { message, session_id, language } = req.body;
     
     // Forward request to NLP engine
-    const response = await fetch('http://nlp-engine:8001/chat', {
+    const response = await fetch(`${NLP_API_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
